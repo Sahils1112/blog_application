@@ -1,12 +1,20 @@
-const mongoose = require("mongoose");
-require('dotenv').config();
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 
+dotenv.config();
 
-mongoose.set('strictQuery', false);
+mongoose.set("strictQuery", false);
 
+const connectDB = async () => {
+  try {
+    await mongoose.connect(
+      process.env.MONGO_URI || "mongodb://127.0.0.1:27017/Blog"
+    );
+    console.log("MongoDB Connected");
+  } catch (error) {
+    console.error("DB Connection Error:", error.message);
+    process.exit(1);
+  }
+};
 
-mongoose.connect(process.env.MONGO_URI || "mongodb://mongo:27017/Blog").then(()=>{
-    console.log("connected!");
-}).catch((err)=>{
-    console.log(err);
-})
+export default connectDB;

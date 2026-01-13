@@ -1,24 +1,23 @@
-const mongoose = require("mongoose");
-const Blog = require("../model/Blog");
-const User = require("../model/User");
-const { ApiResponse } = require("../utils/ApiResponse");
-const { ApiError } = require("../utils/ApiError");
+import mongoose from "mongoose";
+import Blog from "../model/Blog.js";
+import User from "../model/User.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
 
-const getAllBlogs = async (req, res, next) => {
+export const getAllBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find();
-    if (!blogs || blogs.length === 0) {
+    if (!blogs.length) {
       return res.status(404).json(new ApiError(404, "No blogs found"));
     }
-    return res.status(200).json(new ApiResponse(200, { blogs }, "Blogs found"));
+    res.status(200).json(new ApiResponse(200, { blogs }));
   } catch (e) {
-    return res.status(500).json(new ApiError(500, e.message));
+    res.status(500).json(new ApiError(500, e.message));
   }
 };
 
-const addBlog = async (req, res, next) => {
+export const addBlog = async (req, res) => {
   const { title, desc, img, user } = req.body;
-  const currentDate = new Date();
 
   try {
     const existingUser = await User.findById(user);
@@ -26,78 +25,61 @@ const addBlog = async (req, res, next) => {
       return res.status(400).json(new ApiError(400, "Unauthorized"));
     }
 
-    const blog = new Blog({ title, desc, img, user, date: currentDate });
+    const blog = new Blog({ title, desc, img, user });
 
     const session = await mongoose.startSession();
     session.startTransaction();
+
     await blog.save({ session });
     existingUser.blogs.push(blog);
     await existingUser.save({ session });
+
     await session.commitTransaction();
 
-    return res.status(201).json(new ApiResponse(201, { blog }, "Blog created successfully"));
+    res.status(201).json(new ApiResponse(201, { blog }));
   } catch (e) {
-    return res.status(500).json(new ApiError(500, e.message));
+    res.status(500).json(new ApiError(500, e.message));
   }
 };
 
-const updateBlog = async (req, res, next) => {
-  const blogId = req.params.id;
-  const { title, desc } = req.body;
-
+export const updateBlog = async (req, res) => {
   try {
-    const blog = await Blog.findByIdAndUpdate(blogId, { title, desc }, { new: true });
-    if (!blog) {
-      return res.status(404).json(new ApiError(404, "Blog not found"));
-    }
-    return res.status(200).json(new ApiResponse(200, { blog }, "Blog updated successfully"));
+    const blog = await Blog.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    res.status(200).json(new ApiResponse(200, { blog }));
   } catch (e) {
-    return res.status(500).json(new ApiError(500, e.message));
+    res.status(500).json(new ApiError(500, e.message));
   }
 };
 
-const getById = async (req, res, next) => {
-  const id = req.params.id;
+export const getById = async (req, res) => {
   try {
-    const blog = await Blog.findById(id);
-    if (!blog) {
-      return res.status(404).json(new ApiError(404, "Blog not found"));
-    }
-    return res.status(200).json(new ApiResponse(200, { blog }, "Blog retrieved successfully"));
+    const blog = await Blog.findById(req.params.id);
+    res.status(200).json(new ApiResponse(200, { blog }));
   } catch (e) {
-    return res.status(500).json(new ApiError(500, e.message));
+    res.status(500).json(new ApiError(500, e.message));
   }
 };
 
-const deleteBlog = async (req, res, next) => {
-  const id = req.params.id;
+export const deleteBlog = async (req, res) => {
   try {
-    const blog = await Blog.findByIdAndDelete(id).populate('user');
-    if (!blog) {
-      return res.status(404).json(new ApiError(404, "Blog not found"));
-    }
-
-    const user = blog.user;
-    user.blogs.pull(blog);
-    await user.save();
-
-    return res.status(200).json(new ApiResponse(200, null, "Blog deleted successfully"));
+    const blog = await Blog.findByIdAndDelete(req.params.id).populate("user");
+    blog.user.blogs.pull(blog);
+    await blog.user.save();
+    res.status(200).json(new ApiResponse(200, null, "Deleted"));
   } catch (e) {
-    return res.status(500).json(new ApiError(500, e.message));
+    res.status(500).json(new ApiError(500, e.message));
   }
 };
 
-const getByUserId = async (req, res, next) => {
-  const userId = req.params.id;
+export const getByUserId = async (req, res) => {
   try {
-    const userBlogs = await User.findById(userId).populate("blogs");
-    if (!userBlogs) {
-      return res.status(404).json(new ApiError(404, "No blog found for this user"));
-    }
-    return res.status(200).json(new ApiResponse(200, { user: userBlogs }, "Blogs retrieved successfully"));
+    const userBlogs = await User.findById(req.params.id).populate("blogs");
+    res.status(200).json(new ApiResponse(200, { userBlogs }));
   } catch (e) {
-    return res.status(500).json(new ApiError(500, e.message));
+    res.status(500).json(new ApiError(500, e.message));
   }
 };
-
-module.exports = { getAllBlogs, addBlog, updateBlog, getById, deleteBlog, getByUserId };
